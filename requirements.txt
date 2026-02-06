@@ -11,6 +11,7 @@ python-multipart
 openai
 boto3
 sentry-sdk
+ffmpeg-python
 pytest
 pytest-asyncio
 respx

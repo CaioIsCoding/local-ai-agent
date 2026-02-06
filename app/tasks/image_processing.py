@@ -25,6 +25,53 @@ def run_async(coro):
         asyncio.set_event_loop(loop)
     return loop.run_until_complete(coro)
 
+from app.services.video import VideoService
+from app.services.carousel import CarouselService
+
+@celery_app.task(
+    name="app.tasks.image_processing.generate_format_variant",
+)
+def generate_format_variant(job_id: int, format_type: str = "9:16"):
+    """
+    Creates a variant of the processed image in a different format (e.g., Stories/Reels).
+    """
+    db = SessionLocal()
+    try:
+        job = db.query(ContentJob).filter(ContentJob.id == job_id).first()
+        if not job or not job.media_urls:
+            return "Job or media not found"
+
+        base_image_url = job.media_urls[-1]
+        temp_dir = "/tmp/local-ai-agent"
+        os.makedirs(temp_dir, exist_ok=True)
+        
+        base_path = os.path.join(temp_dir, f"base_{job_id}.png")
+        variant_path = os.path.join(temp_dir, f"variant_{job_id}_{format_type.replace(':', '_')}.png")
+
+        # Download base image
+        with open(base_path, "wb") as f:
+            resp = httpx.get(base_image_url, timeout=30.0)
+            resp.raise_for_status()
+            f.write(resp.content)
+
+        # Apply ratio enforcement
+        BrandingService.enforce_ratio(base_path, variant_path, ratio=format_type)
+
+        # Upload variant
+        s3_url = storage_service.upload_file(variant_path, f"results/{job_id}_{format_type.replace(':', '_')}.png")
+        
+        # Update job
+        job.media_urls = job.media_urls + [s3_url]
+        db.commit()
+
+        # Cleanup
+        os.remove(base_path)
+        os.remove(variant_path)
+
+        return {"status": "success", "variant_url": s3_url}
+    finally:
+        db.close()
+
 @celery_app.task(
     name="app.tasks.image_processing.process_image_task",
     autoretry_for=(RateLimitError, ServiceUnavailableError),

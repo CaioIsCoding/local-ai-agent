@@ -49,6 +49,39 @@ class BrandingService:
         return output_path
 
     @staticmethod
+    def enforce_ratio(image_path: str, output_path: str, ratio: str = "4:5"):
+        """
+        Resize and crop an image to a specific ratio.
+        Supported ratios: '4:5' (Portrait), '9:16' (Stories/Reels), '1:1' (Square).
+        """
+        img = Image.open(image_path)
+        w, h = img.size
+        
+        ratios = {
+            "4:5": 4/5,
+            "9:16": 9/16,
+            "1:1": 1/1
+        }
+        
+        target_ratio = ratios.get(ratio, 4/5)
+        current_ratio = w/h
+        
+        if current_ratio != target_ratio:
+            if current_ratio > target_ratio:
+                # Too wide, crop sides
+                new_w = h * target_ratio
+                left = (w - new_w) / 2
+                img = img.crop((left, 0, left + new_w, h))
+            else:
+                # Too tall, crop top/bottom
+                new_h = w / target_ratio
+                top = (h - new_h) / 2
+                img = img.crop((0, top, w, top + new_h))
+        
+        img.save(output_path)
+        return output_path
+
+    @staticmethod
     def apply_watermark(base_image_path: str, watermark_path: str, output_path: str, opacity: float = 0.5, position: str = "bottom-right"):
         """
         Overlay a watermark onto a base image.
