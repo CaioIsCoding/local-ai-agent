@@ -11,7 +11,9 @@
 
 As part of the BMAD method, this repository serves as a strategic knowledge base. Explore the following documents for deep dives into specific domains:
 
+- [🔑 Credentials & Secrets](CREDENTIALS.md) - Centralized guide for API keys and environment variables.
 - [📜 Legal Guardrails & Compliance](LEGAL_GUARDRAILS.md) - Analysis of CFM, CRM, and LGPD for AI agents.
+- [💼 Business Constants](BUSINESS_CONSTANTS.md) - SaaS tiers, quotas, and pricing logic.
 - [🔬 Research & Deep Dives](RESEARCH.md) - Adversarial findings and future R&D roadmap.
 - [📱 SMM Best Practices](SMM_BEST_PRACTICES.md) - Social Media Marketing strategies optimized for Local AI.
 
