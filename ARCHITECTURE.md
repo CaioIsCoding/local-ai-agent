@@ -53,3 +53,21 @@ The pipeline is designed as a series of atomic tasks to ensure reliability and r
 - **OpenAI:** GPT-4o for vision analysis and caption generation.
 - **PhotoRoom:** High-quality background removal and compositing.
 - **Instagram/Google:** Final publishing destinations.
+
+## 7. Testing Strategy (Contract-First)
+We prioritize **Contract Testing** over unit testing to ensure the integrity of the asynchronous pipeline and its reliance on external APIs.
+
+### The "Contracts"
+1. **Inbound Webhook (Evolution API → LocalAI):**
+    - **Trigger:** `messages.upsert`
+    - **Expectation:** Valid JID, message type (image), and media key/URL.
+2. **AI Analysis (LocalAI → OpenAI):**
+    - **Request:** Image bytes + System Prompt.
+    - **Response:** Strict JSON object containing `social_caption`, `seo_caption`, and `branding_suggestions`.
+3. **Background Removal (LocalAI → PhotoRoom):**
+    - **Request:** Multipart image file.
+    - **Response:** Binary stream of a transparent PNG.
+4. **Outbound Message (LocalAI → Evolution API):**
+    - **Request:** Valid `remote_jid`, base64 image payload, and formatted caption text.
+5. **Persistence (LocalAI → Database):**
+    - **Expectation:** `ContentJob` reflects the correct state transition (`pending` → `processing` → `completed`).
