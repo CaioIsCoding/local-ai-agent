@@ -183,3 +183,15 @@ CREATE TABLE content_jobs (
 * **Weeks 5-8:** Implement Auth Flows (OAuth) & Deploy to Cloud.
 * **Week 9:** Alpha Test in São Luís. 3 Friendly Clients (Free).
 * **Week 12:** Beta Launch. Niche down to Medical Clinics only. Sales via Direct Outreach showing the "Alpha" results.
+
+---
+
+## 9. Completed Features Checklist (Phase 1 & 2)
+
+- [x] **Core Pipeline:** Vision AI -> PhotoRoom -> Professional Polish (Claid.ai) -> Branding.
+- [x] **Multi-Format Support:** Feed (4:5), Carousel (4:5/1:1), Stories/Reels (9:16) via FFmpeg.
+- [x] **Social Integrations:** Instagram Graph API (Real) & Google Business Profile (Real).
+- [x] **Governance:** Multi-Admin Approval & Quota Enforcement (Redis).
+- [x] **Observability:** Sentry Integration & S3 Storage (Stateless).
+- [x] **Proactive Engagement:** Agent actively nudges admins for content based on Niche/Location.
+- [x] **Production Ready:** `docker-compose.prod.yml` & `deploy.sh` implemented.
