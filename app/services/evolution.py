@@ -2,6 +2,7 @@ import httpx
 from app.config import settings
 import base64
 import os
+from app.core.exceptions import RateLimitError, ServiceUnavailableError, AuthError, ExternalAPIError
 
 class EvolutionService:
     def __init__(self):
@@ -13,6 +14,18 @@ class EvolutionService:
             "apikey": self.api_key,
             "Content-Type": "application/json"
         }
+
+    async def _handle_response(self, response: httpx.Response, service_name: str):
+        if response.status_code == 200 or response.status_code == 201:
+            return response.json()
+        elif response.status_code == 429:
+            raise RateLimitError(service_name, response.status_code, response.text)
+        elif response.status_code in [401, 403]:
+            raise AuthError(service_name, response.status_code, response.text)
+        elif response.status_code >= 500:
+            raise ServiceUnavailableError(service_name, response.status_code, response.text)
+        else:
+            raise ExternalAPIError(service_name, response.status_code, response.text)
 
     async def send_text(self, remote_jid: str, text: str):
         """
@@ -31,9 +44,11 @@ class EvolutionService:
         }
         
         async with httpx.AsyncClient() as client:
-            response = await client.post(url, headers=self._get_headers(), json=payload)
-            response.raise_for_status()
-            return response.json()
+            try:
+                response = await client.post(url, headers=self._get_headers(), json=payload)
+                return await self._handle_response(response, "Evolution")
+            except httpx.HTTPError as e:
+                raise ServiceUnavailableError("Evolution", 503, str(e))
 
     async def send_image(self, remote_jid: str, image_path: str, caption: str = ""):
         """
@@ -54,6 +69,8 @@ class EvolutionService:
         }
 
         async with httpx.AsyncClient() as client:
-            response = await client.post(url, headers=self._get_headers(), json=payload)
-            response.raise_for_status()
-            return response.json()
+            try:
+                response = await client.post(url, headers=self._get_headers(), json=payload)
+                return await self._handle_response(response, "Evolution")
+            except httpx.HTTPError as e:
+                raise ServiceUnavailableError("Evolution", 503, str(e))

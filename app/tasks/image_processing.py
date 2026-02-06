@@ -12,6 +12,8 @@ from app.services.google_business import GoogleBusinessService
 from app.database import SessionLocal
 from app.models import ContentJob, Tenant
 
+from app.core.exceptions import RateLimitError, ServiceUnavailableError, ExternalAPIError
+
 def run_async(coro):
     try:
         loop = asyncio.get_event_loop()
@@ -20,7 +22,13 @@ def run_async(coro):
         asyncio.set_event_loop(loop)
     return loop.run_until_complete(coro)
 
-@celery_app.task(name="app.tasks.image_processing.process_image_task")
+@celery_app.task(
+    name="app.tasks.image_processing.process_image_task",
+    autoretry_for=(RateLimitError, ServiceUnavailableError),
+    retry_backoff=True,
+    retry_backoff_max=600,
+    max_retries=5
+)
 def process_image_task(job_id: int):
     db = SessionLocal()
     job = None
@@ -29,8 +37,9 @@ def process_image_task(job_id: int):
         if not job:
             return f"Job {job_id} not found"
 
-        job.status = "processing"
-        db.commit()
+        if job.status != "processing":
+            job.status = "processing"
+            db.commit()
 
         tenant = db.query(Tenant).filter(Tenant.id == job.tenant_id).first()
         
@@ -113,7 +122,13 @@ def process_image_task(job_id: int):
     finally:
         db.close()
 
-@celery_app.task(name="app.tasks.image_processing.publish_content_task")
+@celery_app.task(
+    name="app.tasks.image_processing.publish_content_task",
+    autoretry_for=(RateLimitError, ServiceUnavailableError),
+    retry_backoff=True,
+    retry_backoff_max=600,
+    max_retries=3
+)
 def publish_content_task(job_id: int, platform: str):
     db = SessionLocal()
     try:

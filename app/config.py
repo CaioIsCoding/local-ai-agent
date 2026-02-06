@@ -17,6 +17,18 @@ class Settings(BaseSettings):
     EVOLUTION_API_KEY: Optional[str] = None
     EVOLUTION_INSTANCE_NAME: Optional[str] = "local-ai"
 
+    # Social Publishing (Instagram)
+    INSTAGRAM_APP_ID: Optional[str] = None
+    INSTAGRAM_APP_SECRET: Optional[str] = None
+    INSTAGRAM_ACCESS_TOKEN: Optional[str] = None
+    INSTAGRAM_BUSINESS_ACCOUNT_ID: Optional[str] = None
+
+    # Social Publishing (Google Business Profile)
+    GOOGLE_CLIENT_ID: Optional[str] = None
+    GOOGLE_CLIENT_SECRET: Optional[str] = None
+    GOOGLE_PROJECT_ID: Optional[str] = None
+    GOOGLE_REFRESH_TOKEN: Optional[str] = None
+
     class Config:
         env_file = ".env"
         case_sensitive = True

@@ -1,7 +1,9 @@
 import os
 import base64
-from typing import Optional
+import json
 import httpx
+from typing import Optional
+from app.core.exceptions import RateLimitError, ServiceUnavailableError, AuthError, ExternalAPIError
 
 class OpenAIService:
     def __init__(self, api_key: Optional[str] = None):
@@ -55,12 +57,20 @@ class OpenAIService:
         }
 
         async with httpx.AsyncClient() as client:
-            response = await client.post(self.base_url, headers=headers, json=payload, timeout=60.0)
-            
-            if response.status_code == 200:
-                result = response.json()
-                content = result['choices'][0]['message']['content']
-                import json
-                return json.loads(content)
-            else:
-                raise Exception(f"OpenAI API error: {response.status_code} - {response.text}")
+            try:
+                response = await client.post(self.base_url, headers=headers, json=payload, timeout=60.0)
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    content = result['choices'][0]['message']['content']
+                    return json.loads(content)
+                elif response.status_code == 429:
+                    raise RateLimitError("OpenAI", response.status_code, response.text)
+                elif response.status_code in [401, 403]:
+                    raise AuthError("OpenAI", response.status_code, response.text)
+                elif response.status_code >= 500:
+                    raise ServiceUnavailableError("OpenAI", response.status_code, response.text)
+                else:
+                    raise ExternalAPIError("OpenAI", response.status_code, response.text)
+            except httpx.HTTPError as e:
+                raise ServiceUnavailableError("OpenAI", 503, str(e))
