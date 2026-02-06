@@ -7,6 +7,8 @@ from app.tasks.image_processing import process_image_task, publish_content_task
 from app.services.evolution import EvolutionService
 import logging
 
+from app.services.interaction import InteractionService
+
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
@@ -36,14 +38,19 @@ async def evolution_webhook(request: Request, db: Session = Depends(get_db)):
 
         tenant = db.query(Tenant).first()
         if not tenant:
-            tenant = Tenant(business_name="Default Business", niche="E-commerce")
+            tenant = Tenant(
+                business_name="Default Business", 
+                niche="E-commerce",
+                admin_jids=[remote_jid], # Add the sender as admin for testing
+                required_approvals=2
+            )
             db.add(tenant)
             db.commit()
             db.refresh(tenant)
 
         job = ContentJob(
             tenant_id=tenant.id,
-            status="pending",
+            status="pending_approval", # Ticket 027: Multi-Admin Approval Implementation
             media_urls=[media_url],
             input_data={"remote_jid": remote_jid}
         )
@@ -52,49 +59,21 @@ async def evolution_webhook(request: Request, db: Session = Depends(get_db)):
         db.refresh(job)
 
         process_image_task.delay(job.id)
+        
+        # Notify admins about the new job
+        evolution_service = EvolutionService()
+        for admin_jid in tenant.admin_jids:
+            await evolution_service.send_text(
+                admin_jid, 
+                "📸 New content received and processed. Reply 'Approve' to start the approval workflow."
+            )
+            
         return {"status": "success", "job_id": job.id}
 
     # 2. HANDLE COMMANDS (Interaction Logic)
     if text_msg:
-        cmd = text_msg.strip().lower()
-        platforms = {
-            "approve": "all",
-            "post ig": "instagram",
-            "post google": "google_business",
-            "reject": "rejected"
-        }
-
-        matched_platform = None
-        for key, val in platforms.items():
-            if cmd == key:
-                matched_platform = val
-                break
-        
-        if matched_platform:
-            # Find the most recent job for this sender
-            job = db.query(ContentJob).filter(
-                ContentJob.input_data["remote_jid"].astext == remote_jid
-            ).order_by(desc(ContentJob.created_at)).first()
-
-            if not job:
-                return {"status": "error", "message": "No job found for this sender"}
-
-            evolution_service = EvolutionService()
-            
-            if matched_platform == "rejected":
-                job.status = "rejected"
-                db.commit()
-                await evolution_service.send_text(remote_jid, "❌ Content rejected.")
-                return {"status": "success", "action": "rejected"}
-            
-            if matched_platform == "all":
-                publish_content_task.delay(job.id, "instagram")
-                publish_content_task.delay(job.id, "google_business")
-                await evolution_service.send_text(remote_jid, "🚀 Publishing to Instagram and Google...")
-            else:
-                publish_content_task.delay(job.id, matched_platform)
-                await evolution_service.send_text(remote_jid, f"🚀 Publishing to {matched_platform.replace('_', ' ').title()}...")
-            
-            return {"status": "success", "action": f"publishing_{matched_platform}"}
+        interaction_service = InteractionService(db)
+        result = await interaction_service.handle_message(remote_jid, text_msg)
+        return result
 
     return {"status": "ignored", "reason": "no_actionable_content"}
