@@ -80,3 +80,29 @@ Prepare the system for multi-tenant usage, high-availability, and reliable resou
 - [ ] **Ticket 019: Dynamic Task Routing**
   - Refactor `app/celery_app.py` to route tasks dynamically based on tenant plan levels.
   - Configure workers to listen to `high_priority`, `default`, and `low_priority` queues.
+
+---
+
+# BACKLOG: Phase 4 (Verification & SMM Intelligence)
+
+## Goal
+Implement a robust verification loop for all publishing actions and introduce platform-specific intelligence based on SMM best practices.
+
+## Sprints & Tickets
+
+### Priority 7: Verification Loop
+- [ ] **Ticket 022: Implementation of `verify_post` Task**
+    - Refactor `app/tasks/image_processing.py` to include a polling loop for `media_id` status.
+    - Implement fallback to web-scraping/URL validation for platforms with weak API status reporting.
+    - Integration with WhatsApp notification service to alert on "Live" vs "Failed" status.
+
+### Priority 8: SMM Intelligence Module
+- [ ] **Ticket 023: Aspect Ratio & File Validation Service**
+    - Create a pre-flight check service to validate image dimensions against `SMM_BEST_PRACTICES.md` before sending to platform APIs.
+    - Automatically resize or pad images to meet platform requirements.
+- [ ] **Ticket 024: Dynamic Hashtag & Caption Optimizer**
+    - Refactor OpenAI prompt to strictly enforce hashtag density (3-5) and platform-specific character limits.
+    - Implement local keyword injection for Google Business Profile posts.
+- [ ] **Ticket 025: Intelligent Scheduling Engine**
+    - Implement a "Queue with Jitter" to stagger posts.
+    - Allow tenants to select "Peak Hour" slots based on the researched industry standards.

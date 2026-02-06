@@ -91,3 +91,12 @@ Celery is configured with multiple queues to ensure high-value tenants or urgent
 - **`default`:** Standard processing for regular accounts.
 - **`low_priority`:** Background tasks like periodic cleanup or historical data syncing.
 - **Routing Logic:** The worker determines the queue at runtime based on the user's `plan_level`.
+
+## 9. Post Verification (The "Verification-First" Flow)
+To ensure high reliability and data integrity in automated publishing, we implement a **two-step verification flow**:
+
+1.  **Request Post:** The system initiates the publishing request to the target platform (Instagram, Facebook, Google).
+2.  **Verify Live Status:** Instead of assuming success upon a 200 OK from the API, the system enters a verification loop:
+    - **API Check:** Polling `GET /media_id` to confirm the post reached a `PUBLISHED` state.
+    - **Scraping/Public Check:** If the API is unreliable or limited, the system performs a lightweight public URL check (if available) to verify the content is live and visible.
+    - **Confirmation:** Only after successful verification is the user notified that the post is "Live". If verification fails after max retries, the system triggers a `PUBLICATION_FAILED` alert.

@@ -140,6 +140,66 @@ def dispatch_image_process(job_id: int, tenant_plan: str = "free"):
     )
 
 @celery_app.task(
+    name="app.tasks.image_processing.verify_post_task",
+    bind=True,
+    max_retries=10,
+    default_retry_delay=60  # Retry every 60 seconds
+)
+def verify_post_task(self, job_id: int, platform: str, media_id: str):
+    """
+    Sub-task that retries until a post is confirmed live on the target platform.
+    """
+    db = SessionLocal()
+    try:
+        job = db.query(ContentJob).filter(ContentJob.id == job_id).first()
+        if not job:
+            return f"Job {job_id} not found"
+
+        is_live = False
+        if platform == "instagram":
+            # Call Instagram API to check status
+            status_resp = run_async(InstagramService.get_media_status(media_id, "mock_token_123"))
+            if status_resp.get("status") == "PUBLISHED" or status_resp.get("status_code") == "FINISHED":
+                is_live = True
+        elif platform == "google_business":
+            # Call Google API to check status
+            status_resp = run_async(GoogleBusinessService.get_post_status(media_id, "mock_location_abc"))
+            if status_resp.get("state") == "LIVE":
+                is_live = True
+        
+        if is_live:
+            # Final success notification
+            job.status = f"verified_live_{platform}"
+            db.commit()
+
+            evolution_service = EvolutionService()
+            remote_jid = job.input_data.get("remote_jid") if job.input_data else None
+            if remote_jid:
+                msg = f"🚀 VERIFIED: Your post is now LIVE on {platform.replace('_', ' ').title()}!\n\nID: {media_id}"
+                run_async(evolution_service.send_text(remote_jid, msg))
+            return {"status": "verified", "media_id": media_id}
+        else:
+            # Not live yet, retry
+            raise self.retry(exc=Exception(f"Post {media_id} not yet live on {platform}"))
+
+    except Exception as e:
+        if self.request.retries >= self.max_retries:
+            # Hard failure after all retries
+            if job:
+                job.status = f"verification_failed_{platform}"
+                db.commit()
+            
+            evolution_service = EvolutionService()
+            remote_jid = job.input_data.get("remote_jid") if job.input_data else None
+            if remote_jid:
+                msg = f"⚠️ VERIFICATION ALERT: We couldn't confirm your post on {platform} is live after multiple attempts. Please check the platform manually.\n\nID: {media_id}"
+                run_async(evolution_service.send_text(remote_jid, msg))
+            return {"status": "failed", "reason": str(e)}
+        raise e
+    finally:
+        db.close()
+
+@celery_app.task(
     name="app.tasks.image_processing.publish_content_task",
     autoretry_for=(RateLimitError, ServiceUnavailableError),
     retry_backoff=True,
@@ -159,38 +219,35 @@ def publish_content_task(job_id: int, platform: str):
         # Get processed image URL (last in the list usually)
         image_url = job.media_urls[-1] if job.media_urls else ""
         if image_url.startswith("file://"):
-            # In a real scenario, we'd upload this to an S3/Public URL first
-            # Since Instagram/Google require public URLs
             image_url = "https://mock-storage.com/processed-image.png"
 
-        result = {}
+        media_id = None
         if platform == "instagram":
             result = run_async(InstagramService.publish_photo(
                 image_url=image_url,
                 caption=caption,
                 access_token="mock_token_123"
             ))
+            media_id = result.get("id")
         elif platform == "google_business":
             result = run_async(GoogleBusinessService.create_local_post(
                 image_url=image_url,
                 text=caption,
                 location_id="mock_location_abc"
             ))
+            media_id = result.get("name") # Google uses names as IDs
         else:
             return f"Unsupported platform: {platform}"
 
-        # Update job status or meta to show it was published
-        job.status = f"published_{platform}"
-        db.commit()
-        
-        # Optional: notify via WhatsApp that it was published
-        evolution_service = EvolutionService()
-        remote_jid = job.input_data.get("remote_jid") if job.input_data else None
-        if remote_jid:
-            msg = f"✅ Content successfully published to {platform.replace('_', ' ').title()}!"
-            run_async(evolution_service.send_text(remote_jid, msg))
-
-        return result
+        if media_id:
+            # Trigger the verification loop
+            verify_post_task.delay(job_id, platform, media_id)
+            
+            job.status = f"publishing_{platform}"
+            db.commit()
+            return {"status": "publishing_initiated", "media_id": media_id}
+        else:
+            raise ExternalAPIError(f"Failed to get media_id from {platform}")
 
     except Exception as e:
         print(f"Error publishing job {job_id} to {platform}: {str(e)}")
