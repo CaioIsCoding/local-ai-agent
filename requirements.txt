@@ -9,3 +9,6 @@ Pillow
 httpx
 python-multipart
 openai
+pytest
+pytest-asyncio
+respx

@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, JSON, ForeignKey, DateTime, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from .database import Base
+from app.database import Base
 
 class Tenant(Base):
     __tablename__ = "tenants"
@@ -36,6 +36,7 @@ class ContentJob(Base):
     tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False)
     status = Column(String, default="pending")  # pending, processing, completed, failed
     media_urls = Column(JSON, default=[])  # List of media URLs (original/processed)
+    input_data = Column(JSON, default={})  # NEW: Store original payload data
     generated_copies = Column(JSON, default=[])  # Captions/descriptions
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
