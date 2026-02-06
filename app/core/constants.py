@@ -39,3 +39,9 @@ class Compliance:
     """
     MIN_APPROVERS_ENTERPRISE = 2
     MIN_APPROVERS_SMB = 1
+
+class FeatureFlags:
+    """
+    Feature toggles for Beta/Alpha testing.
+    """
+    FEATURE_VIDEO_CUTTING = True

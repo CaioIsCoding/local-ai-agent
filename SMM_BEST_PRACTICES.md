@@ -48,3 +48,14 @@ To differentiate from basic automated tools, the agent applies an automated reto
 ### Automated Queueing
 - **Staggered Posting:** Avoid publishing to multiple platforms at the exact same second to mimic human behavior.
 - **Retry Logic:** Use exponential backoff for API failures, especially during global platform outages.
+
+## 4. Video Intelligence (Auto-Reel Generator)
+
+### The "Smart Video" Pipeline
+The agent uses OpenAI Whisper and FFmpeg to automate Reels production.
+- **Input:** Raw video (vertical or horizontal).
+- **Process:**
+    1.  **Transcription:** Audio is transcribed using Whisper.
+    2.  **Subtitle Burning:** Text is overlaid on the video in 9:16 format.
+    3.  **Styling:** Custom fonts/colors applied to match branding.
+- **Output:** A "Reel-Ready" video file (MP4) ready for direct upload.
