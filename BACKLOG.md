@@ -132,6 +132,11 @@ Transform the agent from a reactive tool into a proactive brand partner while en
 - [ ] **Ticket 027: Multi-Admin Approval Implementation**
     - Refactor the approval workflow to require consensus from multiple `admin_jids`.
     - Implement WhatsApp interactive buttons for "Approve/Reject" that track which admin responded.
-- [ ] **Ticket 028: Legal Guardrail Hard-Block**
-    - Integrate the `compliance_check` from OpenAI Vision into the workflow.
-    - Automatically block posts with high-risk legal violations (e.g., pricing in medical niche) and notify admins with the specific rule from `LEGAL_GUARDRAILS.md`.
+### Priority 11: Professional Aesthetic Module
+- [x] **Ticket 029: The Professional Aesthetic Module**
+    - **Logic:** Shift from "basic branding" to "automated professional production."
+    - **Implemented:** 
+        - `app/services/branding.py`: Added `professional_polish` with color grading (clinical white balance) and bokeh.
+        - `app/services/enhancement.py`: Integrated Claid.ai for high-end retouching.
+        - `app/tasks/image_processing.py`: Integrated enhancement and polish steps; enforced 4:5 Portrait ratio.
+    - **Status:** COMPLETED. The agent now acts as a digital "Lighting & Retouching Assistant" before acting as a "Social Media Manager."

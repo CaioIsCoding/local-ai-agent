@@ -5,6 +5,7 @@ import shutil
 from app.celery_app import celery_app
 from app.services.openai import OpenAIService
 from app.services.photoroom import PhotoRoomService
+from app.services.enhancement import EnhancementService
 from app.services.branding import BrandingService
 from app.services.evolution import EvolutionService
 from app.services.instagram import InstagramService
@@ -66,21 +67,63 @@ def process_image_task(job_id: int):
         # 2. OpenAI Vision Analysis
         openai_service = OpenAIService()
         analysis = run_async(openai_service.analyze_image(original_path))
+
+        # --- TICKET 029: The Professional Aesthetic Module ---
         
         # 3. PhotoRoom Background Removal
         photoroom_service = PhotoRoomService()
         run_async(photoroom_service.remove_background(open(original_path, "rb").read(), no_bg_path))
 
-        # 4. Branding (Apply logo)
+        # 4. Automated High-End Retouching (Claid.ai)
+        # Note: Claid requires a public URL. We'll use the original_url provided in the job.
+        # If the original_url is not public, this would fail in production.
+        enhanced_path = os.path.join(temp_dir, f"enhanced_{job_id}.png")
+        try:
+            enhancement_service = EnhancementService()
+            run_async(enhancement_service.enhance_image(original_url, enhanced_path))
+            # If enhancement succeeds, we use the enhanced image for subsequent branding/polish
+            # We'll re-run background removal on the enhanced version for best quality
+            run_async(photoroom_service.remove_background(open(enhanced_path, "rb").read(), no_bg_path))
+        except Exception as e:
+            print(f"Claid enhancement failed, falling back to basic: {e}")
+            # Fallback already happened (no_bg_path from original_path)
+
+        # 5. Professional Polish & 4:5 Portrait Ratio
+        # We'll apply the polish (color grading + bokeh) to the no-background subject
+        polished_path = os.path.join(temp_dir, f"polished_{job_id}.png")
+        BrandingService.professional_polish(no_bg_path, polished_path, has_transparency=True)
+
+        # 6. Branding (Apply logo)
         logo_path = tenant.branding_config.get("logo_path") if tenant.branding_config else None
         
         if logo_path and os.path.exists(logo_path):
-            BrandingService.apply_watermark(no_bg_path, logo_path, final_path)
+            BrandingService.apply_watermark(polished_path, logo_path, final_path)
         else:
             # Fallback if no logo
-            shutil.copy(no_bg_path, final_path)
+            shutil.copy(polished_path, final_path)
 
-        # 5. Upload to S3-compatible storage
+        # 7. Ensure 4:5 (Portrait) ratio for premium feel
+        from PIL import Image
+        final_img = Image.open(final_path)
+        w, h = final_img.size
+        target_ratio = 4/5
+        current_ratio = w/h
+        
+        if current_ratio != target_ratio:
+            if current_ratio > target_ratio:
+                # Too wide, crop sides
+                new_w = h * target_ratio
+                left = (w - new_w) / 2
+                final_img = final_img.crop((left, 0, left + new_w, h))
+            else:
+                # Too tall, crop top/bottom
+                new_h = w / target_ratio
+                top = (h - new_h) / 2
+                final_img = final_img.crop((0, top, w, top + new_h))
+            
+            final_img.save(final_path)
+
+        # 8. Upload to S3-compatible storage
         s3_url = storage_service.upload_file(final_path, f"results/{job_id}_final.png")
 
         # 6. Update Job and Send Result

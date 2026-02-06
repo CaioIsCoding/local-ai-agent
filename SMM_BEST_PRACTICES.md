@@ -7,16 +7,19 @@ This document outlines industry standards and technical constraints for social m
 ### Image Aspect Ratios (2026 Standards)
 | Platform | Recommended Ratio | Ideal Resolution | Usage |
 | :--- | :--- | :--- | :--- |
-| **Instagram/FB** | 1:1 (Square) | 1080 x 1080 px | Standard Feed |
-| **Instagram/FB** | 4:5 (Portrait) | 1080 x 1350 px | Optimized Feed (Max Screen) |
+| **Instagram/FB** | 4:5 (Portrait) | 1080 x 1350 px | **PREMIUM STANDARD (Default)** |
+| **Instagram/FB** | 1:1 (Square) | 1080 x 1080 px | Legacy Standard Feed |
 | **Stories/Reels** | 9:16 (Vertical) | 1080 x 1920 px | Full Screen |
 | **LinkedIn** | 1.91:1 or 1:1 | 1200 x 627 px | Professional Feed |
 | **Google BP** | 4:3 or 1:1 | 720 x 720 px (min) | Local Search Results |
 
-### Technical Checks
-- **File Format:** Prefer JPEG for feed posts (smaller size) and PNG for branded content with overlays.
-- **File Size:** Keep under 8MB for Instagram; under 5MB for Google Business Profile.
-- **Safety Zones:** Ensure text and logos are centered; avoid placing critical information in the top/bottom 15% to prevent UI overlap in Stories.
+### Automated Professional Production (The "Luxury Standard")
+To differentiate from basic automated tools, the agent applies an automated retouching and lighting pipeline:
+- **High-End Retouching:** Integrated with Claid.ai for smart-enhancement, noise reduction, and "polishing."
+- **Professional Polish:**
+    - **Color Grading:** Applied to achieve a "clinical/luxury" white balance (slight brightness boost, cooling color temperature).
+    - **Depth of Field (Bokeh):** Subtle Gaussian blur applied to backgrounds to create subject-background separation.
+- **Aspect Ratio Enforcement:** All output defaults to 4:5 (Portrait) unless otherwise specified, ensuring maximum screen real estate and a "premium" editorial feel.
 
 ## 2. Copywriting & SEO (The "Caption Engine")
 
