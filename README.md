@@ -7,6 +7,16 @@
 
 ---
 
+## 📂 Strategic Documentation
+
+As part of the BMAD method, this repository serves as a strategic knowledge base. Explore the following documents for deep dives into specific domains:
+
+- [📜 Legal Guardrails & Compliance](LEGAL_GUARDRAILS.md) - Analysis of CFM, CRM, and LGPD for AI agents.
+- [🔬 Research & Deep Dives](RESEARCH.md) - Adversarial findings and future R&D roadmap.
+- [📱 SMM Best Practices](SMM_BEST_PRACTICES.md) - Social Media Marketing strategies optimized for Local AI.
+
+---
+
 ## 1. Executive Summary
 
 **The Problem:** Small business owners (SMBs) fail at marketing because existing tools (Canva, mLabs) require *initiative* (Pull). Owners do not have the time or skill to login to dashboards, edit photos, and write SEO copy.
