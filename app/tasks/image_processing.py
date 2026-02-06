@@ -9,6 +9,7 @@ from app.services.branding import BrandingService
 from app.services.evolution import EvolutionService
 from app.services.instagram import InstagramService
 from app.services.google_business import GoogleBusinessService
+from app.services.storage import storage_service
 from app.database import SessionLocal
 from app.models import ContentJob, Tenant
 
@@ -78,8 +79,11 @@ def process_image_task(job_id: int):
             # Fallback if no logo
             shutil.copy(no_bg_path, final_path)
 
-        # 5. Update Job and Send Result
-        job.media_urls = job.media_urls + [f"file://{final_path}"]
+        # 5. Upload to S3-compatible storage
+        s3_url = storage_service.upload_file(final_path, f"results/{job_id}_final.png")
+
+        # 6. Update Job and Send Result
+        job.media_urls = job.media_urls + [s3_url]
         job.generated_copies = [
             analysis.get("social_caption", ""),
             analysis.get("seo_caption", ""),
@@ -89,7 +93,7 @@ def process_image_task(job_id: int):
         job.status = "completed"
         db.commit()
 
-        # 6. Send to WhatsApp via Evolution API
+        # 7. Send to WhatsApp via Evolution API
         evolution_service = EvolutionService()
         
         # Format the caption for WhatsApp
@@ -111,7 +115,15 @@ def process_image_task(job_id: int):
                 caption=wa_caption
             ))
         
-        return {"status": "success", "job_id": job_id}
+        # Cleanup local files
+        try:
+            os.remove(original_path)
+            os.remove(no_bg_path)
+            os.remove(final_path)
+        except Exception:
+            pass
+
+        return {"status": "success", "job_id": job_id, "s3_url": s3_url}
 
     except Exception as e:
         if job:
@@ -218,9 +230,7 @@ def publish_content_task(job_id: int, platform: str):
         
         # Get processed image URL (last in the list usually)
         image_url = job.media_urls[-1] if job.media_urls else ""
-        if image_url.startswith("file://"):
-            image_url = "https://mock-storage.com/processed-image.png"
-
+        
         media_id = None
         if platform == "instagram":
             result = run_async(InstagramService.publish_photo(

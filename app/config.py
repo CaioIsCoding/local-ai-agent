@@ -29,6 +29,13 @@ class Settings(BaseSettings):
     GOOGLE_PROJECT_ID: Optional[str] = None
     GOOGLE_REFRESH_TOKEN: Optional[str] = None
 
+    # Observability & Storage
+    SENTRY_DSN: Optional[str] = None
+    AWS_ACCESS_KEY_ID: Optional[str] = None
+    AWS_SECRET_ACCESS_KEY: Optional[str] = None
+    AWS_STORAGE_BUCKET_NAME: Optional[str] = "local-ai-agent-assets"
+    AWS_ENDPOINT_URL: Optional[str] = None  # For S3-compatible storage like DigitalOcean, Minio, etc.
+
     class Config:
         env_file = ".env"
         case_sensitive = True

@@ -1,6 +1,15 @@
 import os
+import sentry_sdk
 from celery import Celery
 from kombu import Queue
+from app.config import settings
+
+if settings.SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        traces_sample_rate=1.0,
+        profiles_sample_rate=1.0,
+    )
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 

@@ -9,6 +9,8 @@ Pillow
 httpx
 python-multipart
 openai
+boto3
+sentry-sdk
 pytest
 pytest-asyncio
 respx
