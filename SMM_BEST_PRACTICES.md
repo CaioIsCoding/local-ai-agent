@@ -5,13 +5,17 @@ This document outlines industry standards and technical constraints for social m
 ## 1. Visual Content Standards
 
 ### Image Aspect Ratios (2026 Standards)
-| Platform | Recommended Ratio | Ideal Resolution | Usage |
+| Format | Recommended Ratio | Ideal Resolution | Usage |
 | :--- | :--- | :--- | :--- |
-| **Instagram/FB** | 4:5 (Portrait) | 1080 x 1350 px | **PREMIUM STANDARD (Default)** |
-| **Instagram/FB** | 1:1 (Square) | 1080 x 1080 px | Legacy Standard Feed |
-| **Stories/Reels** | 9:16 (Vertical) | 1080 x 1920 px | Full Screen |
-| **LinkedIn** | 1.91:1 or 1:1 | 1200 x 627 px | Professional Feed |
+| **Feed Photo** | 4:5 (Portrait) | 1080 x 1350 px | **PREMIUM STANDARD (Default)** |
+| **Carousel** | 4:5 or 1:1 | 1080 x 1350 px | Swipe-through educational/results |
+| **Stories/Reels** | 9:16 (Vertical) | 1080 x 1920 px | Full Screen Engagement |
 | **Google BP** | 4:3 or 1:1 | 720 x 720 px (min) | Local Search Results |
+
+### Content Variety Strategy
+- **Feed Photo:** Single, high-impact image with brand watermark. Best for "Before & After" or procedure highlights.
+- **Carousel:** Multi-slide format (2-10 images) generated from a single photo concept. Perfect for "Step-by-step" education or "Process" breakdowns.
+- **Stories/Reels:** Vertical 9:16 format. Requires video processing pipeline (FFmpeg) for compilation and overlay.
 
 ### Automated Professional Production (The "Luxury Standard")
 To differentiate from basic automated tools, the agent applies an automated retouching and lighting pipeline:

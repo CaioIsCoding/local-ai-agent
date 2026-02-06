@@ -112,6 +112,10 @@ Implement a robust verification loop for all publishing actions and introduce pl
 - [ ] **Ticket 025: Intelligent Scheduling Engine**
     - Implement a "Queue with Jitter" to stagger posts.
     - Allow tenants to select "Peak Hour" slots based on the researched industry standards.
+- [ ] **Ticket 030: Multi-Format Content Generation**
+    - **Stories/Reels Support:** Implement 9:16 vertical cropping pipeline and FFmpeg integration for video compilation/overlays.
+    - **Carousel Generation:** Logic to split a single concept into 3-5 sequential slides for swipe-through posts.
+    - **Format Selector:** Intelligence to recommend best format based on content type (e.g., "Procedure" = Carousel, "Vibe" = Reel).
 
 ---
 
