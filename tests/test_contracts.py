@@ -131,3 +131,44 @@ def test_evolution_webhook_ingestion(monkeypatch):
     
     # Cleanup
     app.dependency_overrides.clear()
+
+# --- Mocks for Instagram ---
+from app.services.instagram import InstagramService
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_instagram_service_contract(monkeypatch):
+    monkeypatch.setattr("app.config.settings.INSTAGRAM_ACCESS_TOKEN", "fake-token")
+    monkeypatch.setattr("app.config.settings.INSTAGRAM_BUSINESS_ACCOUNT_ID", "fake-id")
+
+    # 1. Mock Container Creation
+    respx.post("https://graph.facebook.com/v19.0/fake-id/media").mock(
+        return_value=Response(200, json={"id": "container_123"})
+    )
+    
+    # 2. Mock Status Polling (ready)
+    respx.get("https://graph.facebook.com/v19.0/container_123").mock(
+        return_value=Response(200, json={"status_code": "FINISHED", "id": "container_123"})
+    )
+    
+    # 3. Mock Publish
+    respx.post("https://graph.facebook.com/v19.0/fake-id/media_publish").mock(
+        return_value=Response(200, json={"id": "media_999"})
+    )
+
+    result = await InstagramService.publish_photo("http://example.com/img.jpg", "Test caption")
+    
+    assert result["status"] == "success"
+    assert result["id"] == "media_999"
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_instagram_status_contract(monkeypatch):
+    monkeypatch.setattr("app.config.settings.INSTAGRAM_ACCESS_TOKEN", "fake-token")
+    
+    respx.get("https://graph.facebook.com/v19.0/media_999").mock(
+        return_value=Response(200, json={"id": "media_999", "status_code": "FINISHED"})
+    )
+    
+    result = await InstagramService.get_media_status("media_999")
+    assert result["id"] == "media_999"

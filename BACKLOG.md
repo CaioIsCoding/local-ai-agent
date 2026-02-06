@@ -54,12 +54,18 @@ Enable multi-platform publishing (Instagram, Google) with a human-in-the-loop ap
   - Ensure the system can retrieve the last processed job for a specific user when they send an approval command.
 
 ### Priority 5: Social Integrations
-- [ ] **Ticket 011: Instagram Graph API Integration**
+- [x] **Ticket 011: Instagram Graph API Integration**
   - Implement `app/services/instagram.py`.
   - Handle image upload, container creation, and final publishing.
 - [ ] **Ticket 012: Google Business Profile Integration**
   - Implement `app/services/google_business.py`.
   - Handle local post creation for aesthetics/healthcare clinics.
+
+### Priority 6: Verification & SMM Optimization
+- [x] **Ticket 027: The Verification Loop**
+  - Implement polling logic to verify `media_id` is live before sending WA confirmation.
+- [ ] **Ticket 028: Auto-Resizer Module**
+  - Implement PIL-based resizing to 4:5 (IG) and 4:3 (Google) to match SMM best practices.
 
 ---
 

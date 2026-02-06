@@ -12,6 +12,7 @@ from app.services.google_business import GoogleBusinessService
 from app.services.storage import storage_service
 from app.database import SessionLocal
 from app.models import ContentJob, Tenant
+from app.config import settings
 
 from app.core.exceptions import RateLimitError, ServiceUnavailableError, ExternalAPIError
 
@@ -170,8 +171,9 @@ def verify_post_task(self, job_id: int, platform: str, media_id: str):
         is_live = False
         if platform == "instagram":
             # Call Instagram API to check status
-            status_resp = run_async(InstagramService.get_media_status(media_id, "mock_token_123"))
-            if status_resp.get("status") == "PUBLISHED" or status_resp.get("status_code") == "FINISHED":
+            status_resp = run_async(InstagramService.get_media_status(media_id))
+            # If the API returns the media object with the same ID, it's live
+            if status_resp.get("id") == media_id:
                 is_live = True
         elif platform == "google_business":
             # Call Google API to check status
@@ -235,8 +237,7 @@ def publish_content_task(job_id: int, platform: str):
         if platform == "instagram":
             result = run_async(InstagramService.publish_photo(
                 image_url=image_url,
-                caption=caption,
-                access_token="mock_token_123"
+                caption=caption
             ))
             media_id = result.get("id")
         elif platform == "google_business":
@@ -250,8 +251,8 @@ def publish_content_task(job_id: int, platform: str):
             return f"Unsupported platform: {platform}"
 
         if media_id:
-            # Trigger the verification loop
-            verify_post_task.delay(job_id, platform, media_id)
+            # Trigger the verification loop after 60s
+            verify_post_task.apply_async(args=[job_id, platform, media_id], countdown=60)
             
             job.status = f"publishing_{platform}"
             db.commit()
