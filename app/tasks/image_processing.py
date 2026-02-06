@@ -7,6 +7,8 @@ from app.services.openai import OpenAIService
 from app.services.photoroom import PhotoRoomService
 from app.services.branding import BrandingService
 from app.services.evolution import EvolutionService
+from app.services.instagram import InstagramService
+from app.services.google_business import GoogleBusinessService
 from app.database import SessionLocal
 from app.models import ContentJob, Tenant
 
@@ -107,6 +109,59 @@ def process_image_task(job_id: int):
             job.status = "failed"
             db.commit()
         print(f"Error processing job {job_id}: {str(e)}")
+        raise e
+    finally:
+        db.close()
+
+@celery_app.task(name="app.tasks.image_processing.publish_content_task")
+def publish_content_task(job_id: int, platform: str):
+    db = SessionLocal()
+    try:
+        job = db.query(ContentJob).filter(ContentJob.id == job_id).first()
+        if not job:
+            return f"Job {job_id} not found"
+
+        # Get first generated copy as caption (Social Caption)
+        caption = job.generated_copies[0] if job.generated_copies else "Default caption"
+        
+        # Get processed image URL (last in the list usually)
+        image_url = job.media_urls[-1] if job.media_urls else ""
+        if image_url.startswith("file://"):
+            # In a real scenario, we'd upload this to an S3/Public URL first
+            # Since Instagram/Google require public URLs
+            image_url = "https://mock-storage.com/processed-image.png"
+
+        result = {}
+        if platform == "instagram":
+            result = run_async(InstagramService.publish_photo(
+                image_url=image_url,
+                caption=caption,
+                access_token="mock_token_123"
+            ))
+        elif platform == "google_business":
+            result = run_async(GoogleBusinessService.create_local_post(
+                image_url=image_url,
+                text=caption,
+                location_id="mock_location_abc"
+            ))
+        else:
+            return f"Unsupported platform: {platform}"
+
+        # Update job status or meta to show it was published
+        job.status = f"published_{platform}"
+        db.commit()
+        
+        # Optional: notify via WhatsApp that it was published
+        evolution_service = EvolutionService()
+        remote_jid = job.input_data.get("remote_jid") if job.input_data else None
+        if remote_jid:
+            msg = f"✅ Content successfully published to {platform.replace('_', ' ').title()}!"
+            run_async(evolution_service.send_text(remote_jid, msg))
+
+        return result
+
+    except Exception as e:
+        print(f"Error publishing job {job_id} to {platform}: {str(e)}")
         raise e
     finally:
         db.close()
