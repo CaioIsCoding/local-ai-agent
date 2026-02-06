@@ -106,3 +106,26 @@ Implement a robust verification loop for all publishing actions and introduce pl
 - [ ] **Ticket 025: Intelligent Scheduling Engine**
     - Implement a "Queue with Jitter" to stagger posts.
     - Allow tenants to select "Peak Hour" slots based on the researched industry standards.
+
+---
+
+# BACKLOG: Phase 5 (Proactive Engagement & Compliance)
+
+## Goal
+Transform the agent from a reactive tool into a proactive brand partner while ensuring total legal safety.
+
+## Sprints & Tickets
+
+### Priority 9: Proactive Nudging (Engagement)
+- [ ] **Ticket 026: Proactive Nudging Module**
+    - Implement a scheduler (Celery Beat) to send proactive suggestions to admins.
+    - Examples: "It's Monday! How about a photo of the team for the weekly vibe?", "New treatment day? Show the setup!"
+    - Logic: Use the tenant's niche and location to tailor suggestions (e.g., local holidays, industry trends).
+
+### Priority 10: Advanced Compliance & Security
+- [ ] **Ticket 027: Multi-Admin Approval Implementation**
+    - Refactor the approval workflow to require consensus from multiple `admin_jids`.
+    - Implement WhatsApp interactive buttons for "Approve/Reject" that track which admin responded.
+- [ ] **Ticket 028: Legal Guardrail Hard-Block**
+    - Integrate the `compliance_check` from OpenAI Vision into the workflow.
+    - Automatically block posts with high-risk legal violations (e.g., pricing in medical niche) and notify admins with the specific rule from `LEGAL_GUARDRAILS.md`.

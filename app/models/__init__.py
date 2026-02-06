@@ -10,6 +10,7 @@ class Tenant(Base):
     business_name = Column(String, nullable=False)
     niche = Column(String)
     location_city = Column(String)
+    admin_jids = Column(JSON, default=[])  # List of WhatsApp JIDs allowed to manage this tenant
     branding_config = Column(JSON, default={})
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

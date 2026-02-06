@@ -92,6 +92,21 @@ Celery is configured with multiple queues to ensure high-value tenants or urgent
 - **`low_priority`:** Background tasks like periodic cleanup or historical data syncing.
 - **Routing Logic:** The worker determines the queue at runtime based on the user's `plan_level`.
 
+## 10. Multi-Admin Approval & Legal Guardrails
+To ensure security and compliance, especially in sensitive niches like healthcare, the system implements a "Multi-Eye" approval flow.
+
+### Multi-Admin Approval Flow
+1. **Trigger:** An admin (Admin A) sends an image or triggers a publishing request.
+2. **Notification:** The agent notifies all registered admins (`admin_jids`) for that tenant.
+3. **Consensus:** The post remains in `PENDING_APPROVAL` until a second admin (Admin B or C) confirms, or until a designated "Super Admin" overrides.
+4. **Execution:** Once approved by the required number of admins, the publishing pipeline proceeds.
+
+### Legal Compliance Check
+Before any AI-generated caption or processed image is finalized, it passes through a **Legal Guardrail Layer**:
+- **Vision Compliance:** OpenAI Vision checks for forbidden content (e.g., "Before & After" medical photos, explicit pricing in images).
+- **Text Compliance:** NLP check for "guaranteed results" or missing professional registration (CRM/RQE).
+- **Result:** If a violation is detected, the job is flagged for manual review and the admins are notified of the specific legal risk.
+
 ## 9. Post Verification (The "Verification-First" Flow)
 To ensure high reliability and data integrity in automated publishing, we implement a **two-step verification flow**:
 
