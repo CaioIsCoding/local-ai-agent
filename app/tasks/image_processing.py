@@ -122,6 +122,23 @@ def process_image_task(job_id: int):
     finally:
         db.close()
 
+def dispatch_image_process(job_id: int, tenant_plan: str = "free"):
+    """
+    Helper function to demonstrate how tasks can be routed to queues
+    based on a (mocked) tenant plan.
+    """
+    queue_map = {
+        "premium": "high_priority",
+        "standard": "default",
+        "free": "low_priority"
+    }
+    target_queue = queue_map.get(tenant_plan, "default")
+    
+    return process_image_task.apply_async(
+        args=[job_id],
+        queue=target_queue
+    )
+
 @celery_app.task(
     name="app.tasks.image_processing.publish_content_task",
     autoretry_for=(RateLimitError, ServiceUnavailableError),

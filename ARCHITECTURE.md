@@ -71,3 +71,23 @@ We prioritize **Contract Testing** over unit testing to ensure the integrity of 
     - **Request:** Valid `remote_jid`, base64 image payload, and formatted caption text.
 5. **Persistence (LocalAI → Database):**
     - **Expectation:** `ContentJob` reflects the correct state transition (`pending` → `processing` → `completed`).
+
+## 8. Scaling & Production
+### Asset Isolation Strategy
+To prevent cross-tenant branding leaks (e.g., Clinic A's logo appearing on Clinic B's posts), the storage layer implements a multi-tenant pathing structure.
+- **Pattern:** `/{tenant_id}/assets/{asset_type}/{filename}`
+- **Example:** `/tenant_123/assets/logos/main_logo.png`
+- **Enforcement:** The `StorageService` prepends the `tenant_id` to all read/write operations.
+
+### Post Quota System
+Limits are enforced at the service layer before task dispatch:
+- **Daily/Monthly Quotas:** Each tenant has a defined limit for "Social Media Management" posts.
+- **Logic:** `QuotaService` checks current usage in Postgres/Redis before allowing `Task` creation.
+- **Exhaustion:** Returns a `429 Too Many Requests` or sends a WhatsApp notification if the limit is reached.
+
+### Priority Queuing
+Celery is configured with multiple queues to ensure high-value tenants or urgent tasks are processed first:
+- **`high_priority`:** For "Premium" plan tenants or manual "Urgent" triggers.
+- **`default`:** Standard processing for regular accounts.
+- **`low_priority`:** Background tasks like periodic cleanup or historical data syncing.
+- **Routing Logic:** The worker determines the queue at runtime based on the user's `plan_level`.

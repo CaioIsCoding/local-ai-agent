@@ -60,3 +60,23 @@ Enable multi-platform publishing (Instagram, Google) with a human-in-the-loop ap
 - [ ] **Ticket 012: Google Business Profile Integration**
   - Implement `app/services/google_business.py`.
   - Handle local post creation for aesthetics/healthcare clinics.
+
+---
+
+# BACKLOG: Phase 3 (Scaling & Production)
+
+## Goal
+Prepare the system for multi-tenant usage, high-availability, and reliable resource management.
+
+## Sprints & Tickets
+
+### Priority 6: Multi-Tenancy & Resource Control
+- [ ] **Ticket 017: Multi-Tenant Asset Isolation**
+  - Implement `TenantStorageService` using the `/{tenant_id}/assets/` path pattern.
+  - Migrated existing flat storage to the new structure.
+- [ ] **Ticket 018: Quota Enforcement Logic**
+  - Create a `QuotaManager` service to track and limit posts per tenant.
+  - Implement Redis-backed counters for real-time quota checking.
+- [ ] **Ticket 019: Dynamic Task Routing**
+  - Refactor `app/celery_app.py` to route tasks dynamically based on tenant plan levels.
+  - Configure workers to listen to `high_priority`, `default`, and `low_priority` queues.
