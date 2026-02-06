@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     # Evolution API (WhatsApp)
     EVOLUTION_API_URL: Optional[str] = None
     EVOLUTION_API_KEY: Optional[str] = None
+    EVOLUTION_INSTANCE_NAME: Optional[str] = "local-ai"
 
     class Config:
         env_file = ".env"

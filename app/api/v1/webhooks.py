@@ -47,7 +47,8 @@ async def evolution_webhook(request: Request, db: Session = Depends(get_db)):
     job = ContentJob(
         tenant_id=tenant.id,
         status="pending",
-        media_urls=[media_url]
+        media_urls=[media_url],
+        input_data={"remote_jid": data.get("key", {}).get("remoteJid")}
     )
     db.add(job)
     db.commit()

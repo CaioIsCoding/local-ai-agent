@@ -6,6 +6,7 @@ from app.celery_app import celery_app
 from app.services.openai import OpenAIService
 from app.services.photoroom import PhotoRoomService
 from app.services.branding import BrandingService
+from app.services.evolution import EvolutionService
 from app.database import SessionLocal
 from app.models import ContentJob, Tenant
 
@@ -66,12 +67,38 @@ def process_image_task(job_id: int):
             # Fallback if no logo
             shutil.copy(no_bg_path, final_path)
 
-        # 5. Update Job
-        # Note: In production, upload to S3/Cloudinary and use those URLs
+        # 5. Update Job and Send Result
         job.media_urls = job.media_urls + [f"file://{final_path}"]
-        job.generated_copies = [analysis.get("branding_suggestion", ""), analysis.get("context_description", "")]
+        job.generated_copies = [
+            analysis.get("social_caption", ""),
+            analysis.get("seo_caption", ""),
+            analysis.get("branding_suggestion", ""),
+            analysis.get("context_description", "")
+        ]
         job.status = "completed"
         db.commit()
+
+        # 6. Send to WhatsApp via Evolution API
+        evolution_service = EvolutionService()
+        
+        # Format the caption for WhatsApp
+        wa_caption = (
+            f"*Branded Image Ready!*\n\n"
+            f"*Social Caption:*\n{analysis.get('social_caption', '')}\n\n"
+            f"*SEO Caption:*\n{analysis.get('seo_caption', '')}\n\n"
+            f"_Powered by Local AI Agent_"
+        )
+        
+        # We assume the user's phone number/JID is stored in job metadata or tenant info
+        # For MVP, we'll try to get it from the job's input_data if available
+        remote_jid = job.input_data.get("remote_jid") if job.input_data else None
+        
+        if remote_jid:
+            run_async(evolution_service.send_image(
+                remote_jid=remote_jid,
+                image_path=final_path,
+                caption=wa_caption
+            ))
         
         return {"status": "success", "job_id": job_id}
 
