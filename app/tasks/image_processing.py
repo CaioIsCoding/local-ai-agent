@@ -2,6 +2,7 @@ import os
 import asyncio
 import httpx
 import shutil
+import tempfile
 from app.celery_app import celery_app
 from app.services.openai import OpenAIService
 from app.services.photoroom import PhotoRoomService
@@ -42,33 +43,28 @@ def generate_format_variant(job_id: int, format_type: str = "9:16"):
             return "Job or media not found"
 
         base_image_url = job.media_urls[-1]
-        temp_dir = "/tmp/local-ai-agent"
-        os.makedirs(temp_dir, exist_ok=True)
         
-        base_path = os.path.join(temp_dir, f"base_{job_id}.png")
-        variant_path = os.path.join(temp_dir, f"variant_{job_id}_{format_type.replace(':', '_')}.png")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base_path = os.path.join(temp_dir, f"base_{job_id}.png")
+            variant_path = os.path.join(temp_dir, f"variant_{job_id}_{format_type.replace(':', '_')}.png")
 
-        # Download base image
-        with open(base_path, "wb") as f:
-            resp = httpx.get(base_image_url, timeout=30.0)
-            resp.raise_for_status()
-            f.write(resp.content)
+            # Download base image
+            with open(base_path, "wb") as f:
+                resp = httpx.get(base_image_url, timeout=30.0)
+                resp.raise_for_status()
+                f.write(resp.content)
 
-        # Apply ratio enforcement
-        BrandingService.enforce_ratio(base_path, variant_path, ratio=format_type)
+            # Apply ratio enforcement
+            BrandingService.enforce_ratio(base_path, variant_path, ratio=format_type)
 
-        # Upload variant
-        s3_url = storage_service.upload_file(variant_path, f"results/{job_id}_{format_type.replace(':', '_')}.png")
-        
-        # Update job
-        job.media_urls = job.media_urls + [s3_url]
-        db.commit()
+            # Upload variant
+            s3_url = storage_service.upload_file(variant_path, f"results/{job_id}_{format_type.replace(':', '_')}.png")
 
-        # Cleanup
-        os.remove(base_path)
-        os.remove(variant_path)
+            # Update job
+            job.media_urls = job.media_urls + [s3_url]
+            db.commit()
 
-        return {"status": "success", "variant_url": s3_url}
+            return {"status": "success", "variant_url": s3_url}
     finally:
         db.close()
 
@@ -98,123 +94,113 @@ def process_image_task(job_id: int):
 
         original_url = job.media_urls[0]
         
-        temp_dir = "/tmp/local-ai-agent"
-        os.makedirs(temp_dir, exist_ok=True)
-        
-        original_path = os.path.join(temp_dir, f"orig_{job_id}.jpg")
-        no_bg_path = os.path.join(temp_dir, f"nobg_{job_id}.png")
-        final_path = os.path.join(temp_dir, f"final_{job_id}.png")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            original_path = os.path.join(temp_dir, f"orig_{job_id}.jpg")
+            no_bg_path = os.path.join(temp_dir, f"nobg_{job_id}.png")
+            final_path = os.path.join(temp_dir, f"final_{job_id}.png")
 
-        # 1. Download original image
-        with open(original_path, "wb") as f:
-            resp = httpx.get(original_url, timeout=30.0)
-            resp.raise_for_status()
-            f.write(resp.content)
+            # 1. Download original image
+            with open(original_path, "wb") as f:
+                resp = httpx.get(original_url, timeout=30.0)
+                resp.raise_for_status()
+                f.write(resp.content)
 
-        # 2. OpenAI Vision Analysis
-        openai_service = OpenAIService()
-        analysis = run_async(openai_service.analyze_image(original_path))
+            # 2. OpenAI Vision Analysis
+            openai_service = OpenAIService()
+            analysis = run_async(openai_service.analyze_image(original_path))
 
-        # --- TICKET 029: The Professional Aesthetic Module ---
-        
-        # 3. PhotoRoom Background Removal
-        photoroom_service = PhotoRoomService()
-        run_async(photoroom_service.remove_background(open(original_path, "rb").read(), no_bg_path))
+            # --- TICKET 029: The Professional Aesthetic Module ---
 
-        # 4. Automated High-End Retouching (Claid.ai)
-        # Note: Claid requires a public URL. We'll use the original_url provided in the job.
-        # If the original_url is not public, this would fail in production.
-        enhanced_path = os.path.join(temp_dir, f"enhanced_{job_id}.png")
-        try:
-            enhancement_service = EnhancementService()
-            run_async(enhancement_service.enhance_image(original_url, enhanced_path))
-            # If enhancement succeeds, we use the enhanced image for subsequent branding/polish
-            # We'll re-run background removal on the enhanced version for best quality
-            run_async(photoroom_service.remove_background(open(enhanced_path, "rb").read(), no_bg_path))
-        except Exception as e:
-            print(f"Claid enhancement failed, falling back to basic: {e}")
-            # Fallback already happened (no_bg_path from original_path)
+            # 3. PhotoRoom Background Removal
+            photoroom_service = PhotoRoomService()
+            run_async(photoroom_service.remove_background(open(original_path, "rb").read(), no_bg_path))
 
-        # 5. Professional Polish & 4:5 Portrait Ratio
-        # We'll apply the polish (color grading + bokeh) to the no-background subject
-        polished_path = os.path.join(temp_dir, f"polished_{job_id}.png")
-        BrandingService.professional_polish(no_bg_path, polished_path, has_transparency=True)
+            # 4. Automated High-End Retouching (Claid.ai)
+            # Note: Claid requires a public URL. We'll use the original_url provided in the job.
+            # If the original_url is not public, this would fail in production.
+            enhanced_path = os.path.join(temp_dir, f"enhanced_{job_id}.png")
+            try:
+                enhancement_service = EnhancementService()
+                run_async(enhancement_service.enhance_image(original_url, enhanced_path))
+                # If enhancement succeeds, we use the enhanced image for subsequent branding/polish
+                # We'll re-run background removal on the enhanced version for best quality
+                run_async(photoroom_service.remove_background(open(enhanced_path, "rb").read(), no_bg_path))
+            except Exception as e:
+                print(f"Claid enhancement failed, falling back to basic: {e}")
+                # Fallback already happened (no_bg_path from original_path)
 
-        # 6. Branding (Apply logo)
-        logo_path = tenant.branding_config.get("logo_path") if tenant.branding_config else None
-        
-        if logo_path and os.path.exists(logo_path):
-            BrandingService.apply_watermark(polished_path, logo_path, final_path)
-        else:
-            # Fallback if no logo
-            shutil.copy(polished_path, final_path)
+            # 5. Professional Polish & 4:5 Portrait Ratio
+            # We'll apply the polish (color grading + bokeh) to the no-background subject
+            polished_path = os.path.join(temp_dir, f"polished_{job_id}.png")
+            BrandingService.professional_polish(no_bg_path, polished_path, has_transparency=True)
 
-        # 7. Ensure 4:5 (Portrait) ratio for premium feel
-        from PIL import Image
-        final_img = Image.open(final_path)
-        w, h = final_img.size
-        target_ratio = 4/5
-        current_ratio = w/h
-        
-        if current_ratio != target_ratio:
-            if current_ratio > target_ratio:
-                # Too wide, crop sides
-                new_w = h * target_ratio
-                left = (w - new_w) / 2
-                final_img = final_img.crop((left, 0, left + new_w, h))
+            # 6. Branding (Apply logo)
+            logo_path = tenant.branding_config.get("logo_path") if tenant.branding_config else None
+
+            if logo_path and os.path.exists(logo_path):
+                BrandingService.apply_watermark(polished_path, logo_path, final_path)
             else:
-                # Too tall, crop top/bottom
-                new_h = w / target_ratio
-                top = (h - new_h) / 2
-                final_img = final_img.crop((0, top, w, top + new_h))
+                # Fallback if no logo
+                shutil.copy(polished_path, final_path)
+
+            # 7. Ensure 4:5 (Portrait) ratio for premium feel
+            from PIL import Image
+            final_img = Image.open(final_path)
+            w, h = final_img.size
+            target_ratio = 4/5
+            current_ratio = w/h
             
-            final_img.save(final_path)
+            if current_ratio != target_ratio:
+                if current_ratio > target_ratio:
+                    # Too wide, crop sides
+                    new_w = h * target_ratio
+                    left = (w - new_w) / 2
+                    final_img = final_img.crop((left, 0, left + new_w, h))
+                else:
+                    # Too tall, crop top/bottom
+                    new_h = w / target_ratio
+                    top = (h - new_h) / 2
+                    final_img = final_img.crop((0, top, w, top + new_h))
 
-        # 8. Upload to S3-compatible storage
-        s3_url = storage_service.upload_file(final_path, f"results/{job_id}_final.png")
+                final_img.save(final_path)
 
-        # 6. Update Job and Send Result
-        job.media_urls = job.media_urls + [s3_url]
-        job.generated_copies = [
-            analysis.get("social_caption", ""),
-            analysis.get("seo_caption", ""),
-            analysis.get("branding_suggestion", ""),
-            analysis.get("context_description", "")
-        ]
-        job.status = "completed"
-        db.commit()
+            # 8. Upload to S3-compatible storage
+            s3_url = storage_service.upload_file(final_path, f"results/{job_id}_final.png")
 
-        # 7. Send to WhatsApp via Evolution API
-        evolution_service = EvolutionService()
-        
-        # Format the caption for WhatsApp
-        wa_caption = (
-            f"*Branded Image Ready!*\n\n"
-            f"*Social Caption:*\n{analysis.get('social_caption', '')}\n\n"
-            f"*SEO Caption:*\n{analysis.get('seo_caption', '')}\n\n"
-            f"_Powered by Local AI Agent_"
-        )
-        
-        # We assume the user's phone number/JID is stored in job metadata or tenant info
-        # For MVP, we'll try to get it from the job's input_data if available
-        remote_jid = job.input_data.get("remote_jid") if job.input_data else None
-        
-        if remote_jid:
-            run_async(evolution_service.send_image(
-                remote_jid=remote_jid,
-                image_path=final_path,
-                caption=wa_caption
-            ))
-        
-        # Cleanup local files
-        try:
-            os.remove(original_path)
-            os.remove(no_bg_path)
-            os.remove(final_path)
-        except Exception:
-            pass
+            # 6. Update Job and Send Result
+            job.media_urls = job.media_urls + [s3_url]
+            job.generated_copies = [
+                analysis.get("social_caption", ""),
+                analysis.get("seo_caption", ""),
+                analysis.get("branding_suggestion", ""),
+                analysis.get("context_description", "")
+            ]
+            job.status = "completed"
+            db.commit()
 
-        return {"status": "success", "job_id": job_id, "s3_url": s3_url}
+            # 7. Send to WhatsApp via Evolution API
+            evolution_service = EvolutionService()
+
+            # Format the caption for WhatsApp
+            wa_caption = (
+                f"*Branded Image Ready!*\n\n"
+                f"*Social Caption:*\n{analysis.get('social_caption', '')}\n\n"
+                f"*SEO Caption:*\n{analysis.get('seo_caption', '')}\n\n"
+                f"_Powered by Local AI Agent_"
+            )
+
+            # We assume the user's phone number/JID is stored in job metadata or tenant info
+            # For MVP, we'll try to get it from the job's input_data if available
+            remote_jid = job.input_data.get("remote_jid") if job.input_data else None
+
+            if remote_jid:
+                run_async(evolution_service.send_image(
+                    remote_jid=remote_jid,
+                    image_path=final_path,
+                    caption=wa_caption
+                ))
+
+            return {"status": "success", "job_id": job_id, "s3_url": s3_url}
 
     except Exception as e:
         if job:
