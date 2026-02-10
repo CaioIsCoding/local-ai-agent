@@ -1,6 +1,7 @@
 import os
 import base64
 import json
+import asyncio
 import httpx
 from typing import Optional
 from app.core.exceptions import RateLimitError, ServiceUnavailableError, AuthError, ExternalAPIError
@@ -18,8 +19,11 @@ class OpenAIService:
         if not self.api_key:
             raise ValueError("OpenAI API key is not set. Please set OPENAI_API_KEY environment variable.")
 
-        with open(image_path, "rb") as image_file:
-            base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+        def _read_and_encode_image(path: str) -> str:
+            with open(path, "rb") as image_file:
+                return base64.b64encode(image_file.read()).decode('utf-8')
+
+        base64_image = await asyncio.to_thread(_read_and_encode_image, image_path)
 
         headers = {
             "Content-Type": "application/json",
