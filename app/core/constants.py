@@ -33,6 +33,11 @@ class ProcessingLimits:
     RATIO_STORY = (9, 16) # 1080x1920
     RATIO_SQUARE = (1, 1) # 1080x1080
 
+    # Standard Dimensions for Image Processing
+    WIDTH_STANDARD = 1080
+    HEIGHT_FEED = 1350
+    HEIGHT_SQUARE = 1080
+
 class Compliance:
     """
     Legal and Safety Guardrails.

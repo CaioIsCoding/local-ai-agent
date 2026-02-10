@@ -1,6 +1,7 @@
 from PIL import Image
 import os
 import math
+from app.core.constants import ProcessingLimits
 
 class CarouselService:
     @staticmethod
@@ -19,12 +20,16 @@ class CarouselService:
         img = Image.open(image_path)
         img_w, img_h = img.size
 
-        if ratio == "4:5":
-            tile_ratio = 4/5
-        elif ratio == "1:1":
-            tile_ratio = 1/1
-        else:
+        ratio_config = {
+            "4:5": (ProcessingLimits.RATIO_FEED, ProcessingLimits.HEIGHT_FEED),
+            "1:1": (ProcessingLimits.RATIO_SQUARE, ProcessingLimits.HEIGHT_SQUARE),
+        }
+
+        if ratio not in ratio_config:
             raise ValueError("Ratio must be '4:5' or '1:1'.")
+
+        target_ratio_tuple, target_height = ratio_config[ratio]
+        tile_ratio = target_ratio_tuple[0] / target_ratio_tuple[1]
 
         # Each tile will have height = img_h
         # So width per tile = img_h * tile_ratio
@@ -47,8 +52,7 @@ class CarouselService:
         # Or better: Resize image to have height that matches the ratio for the total width.
         # total_width = num_tiles * tile_width. tile_width = height * ratio.
         
-        # Let's target a standard height like 1350 for 4:5 (1080x1350)
-        target_height = 1350 if ratio == "4:5" else 1080
+        # Each tile width will be based on the target height and ratio
         target_tile_width = int(target_height * tile_ratio)
         target_total_width = target_tile_width * num_tiles
 
