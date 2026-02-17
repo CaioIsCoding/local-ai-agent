@@ -34,7 +34,8 @@ async def evolution_webhook(request: Request, db: Session = Depends(get_db)):
         # Mocking the URL extraction for this exercise:
         media_url = data.get("mediaUrl") # Some versions of Evolution API provide this
         if not media_url:
-            media_url = "https://images.unsplash.com/photo-1523275335684-37898b6baf30" 
+            logger.warning(f"Image message received from {remote_jid} but mediaUrl is missing.")
+            return {"status": "ignored", "reason": "missing_media_url"}
 
         tenant = db.query(Tenant).first()
         if not tenant:
