@@ -92,5 +92,16 @@ class TestCarouselServiceMock(unittest.TestCase):
 
         self.assertEqual(len(tile_paths), num_tiles)
 
+    def test_create_carousel_tiles_invalid_num_tiles(self):
+        # Test num_tiles < 3
+        with self.assertRaises(ValueError) as cm:
+            CarouselService.create_carousel_tiles("dummy.jpg", "output", num_tiles=2)
+        self.assertEqual(str(cm.exception), "Number of tiles must be between 3 and 5.")
+
+        # Test num_tiles > 5
+        with self.assertRaises(ValueError) as cm:
+            CarouselService.create_carousel_tiles("dummy.jpg", "output", num_tiles=6)
+        self.assertEqual(str(cm.exception), "Number of tiles must be between 3 and 5.")
+
 if __name__ == "__main__":
     unittest.main()
