@@ -36,15 +36,36 @@ async def evolution_webhook(request: Request, db: Session = Depends(get_db)):
         if not media_url:
             media_url = "https://images.unsplash.com/photo-1523275335684-37898b6baf30" 
 
-        tenant = db.query(Tenant).first()
+        # Identify Tenant securely
+        instance_name = payload.get("instance")
+        tenant = db.query(Tenant).join(SocialAccount).filter(
+            SocialAccount.platform == "whatsapp",
+            SocialAccount.external_id == instance_name
+        ).first()
+
         if not tenant:
+            # Fallback to remote_jid lookup if instance not linked yet
+            tenant = db.query(Tenant).filter(Tenant.admin_jids.contains([remote_jid])).first()
+
+        if not tenant:
+            # For this exercise, create a tenant if not found, but associate with the sender
             tenant = Tenant(
-                business_name="Default Business", 
+                business_name=f"Business {instance_name or 'Default'}",
                 niche="E-commerce",
                 admin_jids=[remote_jid], # Add the sender as admin for testing
                 required_approvals=2
             )
             db.add(tenant)
+            db.flush()
+
+            if instance_name:
+                social = SocialAccount(
+                    tenant_id=tenant.id,
+                    platform="whatsapp",
+                    external_id=instance_name
+                )
+                db.add(social)
+
             db.commit()
             db.refresh(tenant)
 

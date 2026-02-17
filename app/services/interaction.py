@@ -16,8 +16,10 @@ class InteractionService:
         cmd = text.strip().lower()
         
         # Find the most recent job for this sender or related tenant
-        # In a real multi-tenant app, we'd filter by sender's association to a tenant
-        job = self.db.query(ContentJob).order_by(desc(ContentJob.created_at)).first()
+        # Filtered by sender's association to a tenant for security (Ticket 🔒 Tenant Isolation)
+        job = self.db.query(ContentJob).join(Tenant).filter(
+            Tenant.admin_jids.contains([remote_jid])
+        ).order_by(desc(ContentJob.created_at)).first()
 
         if not job:
             return {"status": "error", "message": "No job found"}
